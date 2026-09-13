@@ -99,6 +99,107 @@ async function enviarLog(guild, embeds, arquivos = []) {
 }
 
 // ==============================
+// ENCONTRAR QUEM EXCLUIU
+// ==============================
+
+async function descobrirQuemExcluiu(message) {
+
+    // Se não temos o autor da mensagem,
+    // não conseguimos comparar com o executor.
+    if (!message.author) {
+        return null;
+    }
+
+    // Faz até 3 tentativas.
+    // Isso dá tempo para o Discord registrar
+    // a exclusão no Audit Log.
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+
+        try {
+
+            const logs =
+                await message.guild.fetchAuditLogs({
+                    type: AuditLogEvent.MessageDelete,
+                    limit: 10
+                });
+
+            const entrada =
+                logs.entries.find(entry => {
+
+                    if (!entry.target) {
+                        return false;
+                    }
+
+                    // Autor da mensagem apagada
+                    const mesmoUsuario =
+                        entry.target.id ===
+                        message.author.id;
+
+                    // Canal onde a mensagem foi apagada
+                    const mesmoCanal =
+                        entry.extra?.channel?.id ===
+                        message.channel?.id;
+
+                    // A entrada precisa ser recente.
+                    // Usamos uma janela curta para evitar
+                    // pegar uma exclusão antiga.
+                    const recente =
+                        Date.now() -
+                        entry.createdTimestamp <
+                        10000;
+
+                    return (
+                        mesmoUsuario &&
+                        mesmoCanal &&
+                        recente
+                    );
+
+                });
+
+            if (
+                entrada &&
+                entrada.executor
+            ) {
+
+                // Se a própria pessoa apagou sua mensagem,
+                // não mostramos "Excluída por".
+                if (
+                    entrada.executor.id ===
+                    message.author.id
+                ) {
+                    return null;
+                }
+
+                // Encontramos quem realmente executou
+                // a exclusão.
+                return entrada.executor;
+            }
+
+        } catch (error) {
+
+            console.error(
+                `Erro ao consultar Audit Log (tentativa ${tentativa + 1}):`,
+                error
+            );
+
+        }
+
+        // Esperar antes da próxima tentativa.
+        if (tentativa < 2) {
+
+            await new Promise(resolve => {
+                setTimeout(resolve, 500);
+            });
+
+        }
+    }
+
+    // Se não conseguiu identificar com segurança,
+    // simplesmente não mostra "Desconhecido".
+    return null;
+}
+
+// ==============================
 // MENSAGEM EDITADA
 // ==============================
 
@@ -214,63 +315,15 @@ client.on('messageDelete', async (message) => {
         // VERIFICAR QUEM EXCLUIU
         // ==============================
 
+        const executor =
+            await descobrirQuemExcluiu(message);
+
         let excluidaPor = null;
 
-        try {
+        if (executor) {
 
-            const logs =
-                await message.guild.fetchAuditLogs({
-                    type: AuditLogEvent.MessageDelete,
-                    limit: 10
-                });
-
-            const entrada =
-                logs.entries.find(entry => {
-
-                    if (!entry.target) {
-                        return false;
-                    }
-
-                    const mesmoUsuario =
-                        entry.target.id ===
-                        message.author?.id;
-
-                    const mesmoCanal =
-                        entry.extra?.channel?.id ===
-                        message.channel?.id;
-
-                    const recente =
-                        Date.now() -
-                        entry.createdTimestamp <
-                        10000;
-
-                    return (
-                        mesmoUsuario &&
-                        mesmoCanal &&
-                        recente
-                    );
-
-                });
-
-            if (
-                entrada &&
-                entrada.executor &&
-                message.author &&
-                entrada.executor.id !==
-                message.author.id
-            ) {
-
-                excluidaPor =
-                    `${entrada.executor}`;
-
-            }
-
-        } catch (error) {
-
-            console.error(
-                'Erro ao verificar quem excluiu a mensagem:',
-                error
-            );
+            excluidaPor =
+                `${executor}`;
 
         }
 
