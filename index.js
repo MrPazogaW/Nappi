@@ -64,7 +64,7 @@ function horarioBrasil() {
 // ENVIAR LOG
 // ==============================
 
-async function enviarLog(guild, embed, arquivos = []) {
+async function enviarLog(guild, embeds, arquivos = []) {
     try {
         const canalLogs = guild.channels.cache.get(
             process.env.LOG_CHANNEL_ID
@@ -76,7 +76,7 @@ async function enviarLog(guild, embed, arquivos = []) {
         }
 
         await canalLogs.send({
-            embeds: [embed],
+            embeds: embeds,
             files: arquivos
         });
 
@@ -146,7 +146,7 @@ ${depois}
                 text: `🕐 ${horarioBrasil()}\nID: ${mensagemNova.id}`
             });
 
-        await enviarLog(mensagemNova.guild, embed);
+        await enviarLog(mensagemNova.guild, [embed]);
 
     } catch (error) {
         console.error('Erro ao registrar mensagem editada:', error);
@@ -293,10 +293,12 @@ ${conteudo}
         }
 
         // ==============================
-        // EMBED
+        // EMBED PRINCIPAL
         // ==============================
 
-        const embed = new EmbedBuilder()
+        const embeds = [];
+
+        const embedPrincipal = new EmbedBuilder()
             .setColor('#9B111E')
             .setAuthor({
                 name: message.author
@@ -312,25 +314,42 @@ ${conteudo}
                 text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
             });
 
+        embeds.push(embedPrincipal);
+
         // ==============================
-        // MOSTRAR A PRIMEIRA IMAGEM/GIF
+        // MOSTRAR TODAS AS IMAGENS/GIFS
         // ==============================
 
-        if (arquivos.length > 0) {
+        for (let i = 0; i < arquivos.length; i++) {
 
-            const primeiroArquivo = arquivos[0];
+            const arquivo = arquivos[i];
 
             const ehImagem =
                 /\.(png|jpe?g|webp|gif)$/i.test(
-                    primeiroArquivo.name
+                    arquivo.name
                 );
 
-            if (ehImagem) {
+            if (!ehImagem) continue;
 
-                embed.setImage(
-                    `attachment://${primeiroArquivo.name}`
+            // A primeira imagem continua exatamente
+            // como já estava funcionando.
+            if (i === 0) {
+
+                embedPrincipal.setImage(
+                    `attachment://${arquivo.name}`
                 );
 
+            } else {
+
+                // As imagens seguintes agora também
+                // ficam dentro do log como embeds.
+                const embedImagem = new EmbedBuilder()
+                    .setColor('#9B111E')
+                    .setImage(
+                        `attachment://${arquivo.name}`
+                    );
+
+                embeds.push(embedImagem);
             }
         }
 
@@ -340,7 +359,7 @@ ${conteudo}
 
         await enviarLog(
             message.guild,
-            embed,
+            embeds,
             arquivos
         );
 
