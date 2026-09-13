@@ -441,12 +441,8 @@ client.on('messageReactionRemove', async (reaction, user) => {
         const nomeEmoji =
             emoji.name || emoji.toString();
 
-        const idEmoji = emoji.id
-            ? ` [${emoji.id}]`
-            : '';
-
         const canal = message.channel
-            ? `${message.channel}`
+            ? `#${message.channel.name}`
             : 'Canal desconhecido';
 
         // ==============================
@@ -456,16 +452,15 @@ client.on('messageReactionRemove', async (reaction, user) => {
         const embed = new EmbedBuilder()
             .setColor('#8A00C4')
             .setAuthor({
-                name: `${user.username} (${user.id})`,
+                name: `${user.username} • ${user.id}`,
                 iconURL: user.displayAvatarURL()
             })
             .setDescription(
 `
-**Channel:** ${canal}
+**Canal:**
+${canal}
 
-**Emoji:** ${nomeEmoji}${idEmoji}
-
-**Message:** [Jump to Message](${message.url})
+**Emoji:** ${nomeEmoji}
 `
             )
             .setFooter({
