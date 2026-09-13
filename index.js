@@ -64,7 +64,7 @@ function horarioBrasil() {
 // ENVIAR LOG
 // ==============================
 
-async function enviarLog(guild, embed) {
+async function enviarLog(guild, embed, arquivos = []) {
     try {
         const canalLogs = guild.channels.cache.get(
             process.env.LOG_CHANNEL_ID
@@ -76,7 +76,8 @@ async function enviarLog(guild, embed) {
         }
 
         await canalLogs.send({
-            embeds: [embed]
+            embeds: [embed],
+            files: arquivos
         });
 
     } catch (error) {
@@ -176,19 +177,18 @@ client.on('messageDelete', async (message) => {
 
             if (!entry.target) return false;
 
-            // A entrada precisa ser do mesmo autor da mensagem
             const mesmoUsuario =
                 entry.target.id === message.author?.id;
 
-            // Precisa ser uma exclusão recente
+            const mesmoCanal =
+                entry.extra?.channel?.id === message.channel?.id;
+
             const recente =
                 Date.now() - entry.createdTimestamp < 10000;
 
-            return mesmoUsuario && recente;
+            return mesmoUsuario && mesmoCanal && recente;
         });
 
-        // Só considera como "outra pessoa"
-        // se o executor for diferente do autor
         if (
             entrada &&
             entrada.executor &&
@@ -213,8 +213,6 @@ client.on('messageDelete', async (message) => {
 👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}`;
 
-    // Só adiciona "Excluída por"
-    // quando realmente foi outra pessoa
     if (excluidaPor) {
         descricao += `
 👮 **Excluída por:** ${excluidaPor}`;
@@ -226,6 +224,47 @@ client.on('messageDelete', async (message) => {
 \`\`\`
 ${conteudo}
 \`\`\``;
+
+    // ==============================
+    // COPIAR IMAGENS E GIFS
+    // ==============================
+
+    const arquivos = [];
+    const anexos = [...message.attachments.values()];
+
+    for (let i = 0; i < anexos.length; i++) {
+
+        const anexo = anexos[i];
+
+        const nomeOriginal = anexo.name || `arquivo-${i + 1}`;
+
+        try {
+
+            const resposta = await fetch(anexo.url);
+
+            if (!resposta.ok) {
+                console.log(
+                    `Não foi possível baixar o anexo: ${nomeOriginal}`
+                );
+                continue;
+            }
+
+            const buffer = Buffer.from(
+                await resposta.arrayBuffer()
+            );
+
+            arquivos.push({
+                attachment: buffer,
+                name: nomeOriginal
+            });
+
+        } catch (error) {
+            console.error(
+                `Erro ao salvar o anexo ${nomeOriginal}:`,
+                error
+            );
+        }
+    }
 
     // ==============================
     // EMBED
@@ -247,11 +286,35 @@ ${conteudo}
             text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
         });
 
-    await enviarLog(message.guild, embed);
+    // ==============================
+    // MOSTRAR A IMAGEM/GIF NO LOG
+    // ==============================
+
+    if (arquivos.length > 0) {
+
+        const primeiroArquivo = arquivos[0];
+
+        const ehImagem =
+            /\.(png|jpe?g|webp|gif)$/i.test(
+                primeiroArquivo.name
+            );
+
+        if (ehImagem) {
+            embed.setImage(
+                `attachment://${primeiroArquivo.name}`
+            );
+        }
+    }
+
+    await enviarLog(
+        message.guild,
+        embed,
+        arquivos
+    );
 });
 
 // ==============================
 // LOGIN
 // ==============================
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN);w
