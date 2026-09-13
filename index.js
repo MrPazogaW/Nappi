@@ -76,7 +76,6 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
     if (!mensagemNova.guild) return;
     if (mensagemNova.author?.bot) return;
 
-    // Ignora alterações que não mudaram o texto
     if (mensagemAntiga.content === mensagemNova.content) return;
 
     const usuario = mensagemNova.author
@@ -98,11 +97,10 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
         : '*Sem texto*';
 
     const embed = new EmbedBuilder()
-        .setColor('#FFDE21')
+        .setColor('#FFC222')
+        .setTitle('✏️ Mensagem editada')
         .setDescription(
-`✏️ **Mensagem editada**
-
-👤 **Usuário:** ${usuario}
+`👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
 
 **Antes:**
@@ -115,9 +113,8 @@ ${antes}
 ${depois}
 \`\`\`
 
-🕐 **Horário:** <t:${Math.floor(Date.now() / 1000)}:F>
-
--# ID: \`${idUsuario}\``
+-# 🕐 ${new Date().toLocaleString('pt-BR')}
+-# ID: ${idUsuario}`
         );
 
     await enviarLog(mensagemNova.guild, embed);
@@ -148,10 +145,9 @@ client.on('messageDelete', async (message) => {
 
     const embed = new EmbedBuilder()
         .setColor('#9B111E')
+        .setTitle('🗑️ Mensagem excluída')
         .setDescription(
-`🗑️ **Mensagem excluída**
-
-👤 **Usuário:** ${usuario}
+`👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
 
 **Mensagem:**
@@ -159,9 +155,8 @@ client.on('messageDelete', async (message) => {
 ${conteudo}
 \`\`\`
 
-🕐 **Horário:** <t:${Math.floor(Date.now() / 1000)}:F>
-
--# ID: \`${idUsuario}\``
+-# 🕐 ${new Date().toLocaleString('pt-BR')}
+-# ID: ${idUsuario}`
         );
 
     await enviarLog(message.guild, embed);
