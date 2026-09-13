@@ -3,7 +3,8 @@ require('dotenv').config();
 const {
     Client,
     GatewayIntentBits,
-    EmbedBuilder
+    EmbedBuilder,
+    AuditLogEvent
 } = require('discord.js');
 
 const express = require('express');
@@ -159,6 +160,38 @@ client.on('messageDelete', async (message) => {
         ? message.content.substring(0, 1000)
         : '*Conteúdo não disponível*';
 
+    // ==============================
+    // DESCOBRIR QUEM EXCLUIU
+    // ==============================
+
+    let excluidaPor = 'Desconhecido';
+
+    try {
+        const logs = await message.guild.fetchAuditLogs({
+            type: AuditLogEvent.MessageDelete,
+            limit: 5
+        });
+
+        const entrada = logs.entries.find(entry => {
+            if (!entry.target) return false;
+
+            const mesmoUsuario =
+                entry.target.id === message.author?.id;
+
+            const recente =
+                Date.now() - entry.createdTimestamp < 10000;
+
+            return mesmoUsuario && recente;
+        });
+
+        if (entrada && entrada.executor) {
+            excluidaPor = `${entrada.executor}`;
+        }
+
+    } catch (error) {
+        console.error('Erro ao verificar quem excluiu a mensagem:', error);
+    }
+
     const embed = new EmbedBuilder()
         .setColor('#9B111E')
         .setAuthor({
@@ -174,6 +207,7 @@ client.on('messageDelete', async (message) => {
 `
 👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
+👮 **Excluída por:** ${excluidaPor}
 
 **Mensagem:**
 \`\`\`
