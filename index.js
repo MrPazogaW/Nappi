@@ -110,6 +110,14 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
 
     const embed = new EmbedBuilder()
         .setColor('#FFC222')
+        .setAuthor({
+            name: mensagemNova.author
+                ? mensagemNova.author.username
+                : 'Usuário desconhecido',
+            iconURL: mensagemNova.author
+                ? mensagemNova.author.displayAvatarURL()
+                : undefined
+        })
         .setDescription(
 `# ✏️ Mensagem editada
 
@@ -153,6 +161,14 @@ client.on('messageDelete', async (message) => {
 
     const embed = new EmbedBuilder()
         .setColor('#9B111E')
+        .setAuthor({
+            name: message.author
+                ? message.author.username
+                : 'Usuário desconhecido',
+            iconURL: message.author
+                ? message.author.displayAvatarURL()
+                : undefined
+        })
         .setDescription(
 `# 🗑️ Mensagem excluída
 
