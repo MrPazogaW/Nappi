@@ -68,6 +68,22 @@ async function enviarLog(guild, embed) {
 }
 
 // ==============================
+// HORÁRIO DE BRASÍLIA
+// ==============================
+
+function horarioBrasil() {
+    return new Date().toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+}
+
+// ==============================
 // LOG DE MENSAGEM EDITADA
 // ==============================
 
@@ -81,10 +97,6 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
     const usuario = mensagemNova.author
         ? `${mensagemNova.author}`
         : 'Usuário desconhecido';
-
-    const idUsuario = mensagemNova.author
-        ? mensagemNova.author.id
-        : 'Desconhecido';
 
     const canal = `${mensagemNova.channel}`;
 
@@ -107,14 +119,13 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
 \`\`\`
 ${antes}
 \`\`\`
-
 **Depois:**
 \`\`\`
 ${depois}
 \`\`\`
 
--# 🕐 ${new Date().toLocaleString('pt-BR')}
--# ID: ${idUsuario}`
+-# 🕐 ${horarioBrasil()}
+-# ID: ${mensagemNova.id}`
         );
 
     await enviarLog(mensagemNova.guild, embed);
@@ -132,10 +143,6 @@ client.on('messageDelete', async (message) => {
     const usuario = message.author
         ? `${message.author}`
         : 'Usuário desconhecido';
-
-    const idUsuario = message.author
-        ? message.author.id
-        : 'Desconhecido';
 
     const canal = `${message.channel}`;
 
@@ -155,8 +162,8 @@ client.on('messageDelete', async (message) => {
 ${conteudo}
 \`\`\`
 
--# 🕐 ${new Date().toLocaleString('pt-BR')}
--# ID: ${idUsuario}`
+-# 🕐 ${horarioBrasil()}
+-# ID: ${message.id}`
         );
 
     await enviarLog(message.guild, embed);
@@ -166,4 +173,4 @@ ${conteudo}
 // LOGIN
 // ==============================
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN);w
