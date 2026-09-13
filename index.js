@@ -9,7 +9,7 @@ const {
 const express = require('express');
 
 // ==============================
-// SERVIDOR PARA O RENDER
+// SERVIDOR DO RENDER
 // ==============================
 
 const app = express();
@@ -24,7 +24,7 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 // ==============================
-// BOT DO DISCORD
+// BOT
 // ==============================
 
 const client = new Client({
@@ -44,7 +44,23 @@ client.once('ready', () => {
 });
 
 // ==============================
-// FUNÇÃO PARA ENVIAR LOG
+// HORÁRIO DO BRASIL
+// ==============================
+
+function horarioBrasil() {
+    return new Date().toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+}
+
+// ==============================
+// ENVIAR LOG
 // ==============================
 
 async function enviarLog(guild, embed) {
@@ -68,29 +84,13 @@ async function enviarLog(guild, embed) {
 }
 
 // ==============================
-// HORÁRIO DE BRASÍLIA
-// ==============================
-
-function horarioBrasil() {
-    return new Date().toLocaleString('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-    });
-}
-
-// ==============================
-// LOG DE MENSAGEM EDITADA
+// MENSAGEM EDITADA
 // ==============================
 
 client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
 
     if (!mensagemNova.guild) return;
-    if (mensagemNova.author?.bot) return;
+    if (mensagemNova.author && mensagemNova.author.bot) return;
 
     if (mensagemAntiga.content === mensagemNova.content) return;
 
@@ -132,13 +132,13 @@ ${depois}
 });
 
 // ==============================
-// LOG DE MENSAGEM EXCLUÍDA
+// MENSAGEM EXCLUÍDA
 // ==============================
 
 client.on('messageDelete', async (message) => {
 
     if (!message.guild) return;
-    if (message.author?.bot) return;
+    if (message.author && message.author.bot) return;
 
     const usuario = message.author
         ? `${message.author}`
@@ -173,4 +173,4 @@ ${conteudo}
 // LOGIN
 // ==============================
 
-client.login(process.env.TOKEN);w
+client.login(process.env.TOKEN);
