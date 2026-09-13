@@ -34,7 +34,10 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.GuildMessageReactions,
+
+        // Necessário para receber eventos do Audit Log
+        GatewayIntentBits.GuildModeration
     ],
     partials: [
         Partials.Message,
@@ -42,6 +45,20 @@ const client = new Client({
         Partials.Reaction
     ]
 });
+
+// ==============================
+// EXCLUSÕES DETECTADAS PELO
+// AUDIT LOG
+// ==============================
+
+// Guarda temporariamente as exclusões detectadas.
+// A chave é:
+// autor da mensagem + canal
+//
+// Exemplo:
+// "123456789:987654321"
+//
+const exclusoesPendentes = new Map();
 
 // ==============================
 // BOT ONLINE
@@ -99,105 +116,155 @@ async function enviarLog(guild, embeds, arquivos = []) {
 }
 
 // ==============================
-// ENCONTRAR QUEM EXCLUIU
+// AUDIT LOG
+// DETECTAR MENSAGEM EXCLUÍDA
 // ==============================
 
-async function descobrirQuemExcluiu(message) {
-
-    // Se não temos o autor da mensagem,
-    // não conseguimos comparar com o executor.
-    if (!message.author) {
-        return null;
-    }
-
-    // Faz até 3 tentativas.
-    // Isso dá tempo para o Discord registrar
-    // a exclusão no Audit Log.
-    for (let tentativa = 0; tentativa < 3; tentativa++) {
+client.on(
+    'guildAuditLogEntryCreate',
+    async (auditLogEntry, guild) => {
 
         try {
 
-            const logs =
-                await message.guild.fetchAuditLogs({
-                    type: AuditLogEvent.MessageDelete,
-                    limit: 10
-                });
-
-            const entrada =
-                logs.entries.find(entry => {
-
-                    if (!entry.target) {
-                        return false;
-                    }
-
-                    // Autor da mensagem apagada
-                    const mesmoUsuario =
-                        entry.target.id ===
-                        message.author.id;
-
-                    // Canal onde a mensagem foi apagada
-                    const mesmoCanal =
-                        entry.extra?.channel?.id ===
-                        message.channel?.id;
-
-                    // A entrada precisa ser recente.
-                    // Usamos uma janela curta para evitar
-                    // pegar uma exclusão antiga.
-                    const recente =
-                        Date.now() -
-                        entry.createdTimestamp <
-                        10000;
-
-                    return (
-                        mesmoUsuario &&
-                        mesmoCanal &&
-                        recente
-                    );
-
-                });
+            // ==============================
+            // VERIFICAR SE É EXCLUSÃO
+            // ==============================
 
             if (
-                entrada &&
-                entrada.executor
+                auditLogEntry.action !==
+                AuditLogEvent.MessageDelete
             ) {
+                return;
+            }
 
-                // Se a própria pessoa apagou sua mensagem,
-                // não mostramos "Excluída por".
-                if (
-                    entrada.executor.id ===
-                    message.author.id
-                ) {
-                    return null;
+            // ==============================
+            // VERIFICAR AUTOR DA MENSAGEM
+            // ==============================
+
+            if (!auditLogEntry.target) {
+                return;
+            }
+
+            // ==============================
+            // VERIFICAR EXECUTOR
+            // ==============================
+
+            if (!auditLogEntry.executor) {
+                return;
+            }
+
+            // ==============================
+            // VERIFICAR CANAL
+            // ==============================
+
+            const canalId =
+                auditLogEntry.extra?.channel?.id;
+
+            if (!canalId) {
+                return;
+            }
+
+            // ==============================
+            // ID DO AUTOR DA MENSAGEM
+            // ==============================
+
+            const autorId =
+                auditLogEntry.target.id;
+
+            // ==============================
+            // ID DE QUEM EXCLUIU
+            // ==============================
+
+            const executorId =
+                auditLogEntry.executor.id;
+
+            // ==============================
+            // CHAVE
+            // ==============================
+
+            const chave =
+                `${autorId}:${canalId}`;
+
+            // ==============================
+            // GUARDAR EXCLUSÃO
+            // ==============================
+
+            if (!exclusoesPendentes.has(chave)) {
+
+                exclusoesPendentes.set(
+                    chave,
+                    []
+                );
+
+            }
+
+            exclusoesPendentes
+                .get(chave)
+                .push({
+                    executor:
+                        auditLogEntry.executor,
+
+                    timestamp:
+                        Date.now(),
+
+                    auditLogId:
+                        auditLogEntry.id
+                });
+
+            console.log(
+                `Exclusão detectada no Audit Log: ` +
+                `${auditLogEntry.executor.tag || auditLogEntry.executor.username} ` +
+                `apagou uma mensagem de ` +
+                `${auditLogEntry.target.username || auditLogEntry.target.id}`
+            );
+
+            // ==============================
+            // LIMPAR ENTRADAS ANTIGAS
+            // ==============================
+
+            setTimeout(() => {
+
+                const lista =
+                    exclusoesPendentes.get(chave);
+
+                if (!lista) {
+                    return;
                 }
 
-                // Encontramos quem realmente executou
-                // a exclusão.
-                return entrada.executor;
-            }
+                const agora = Date.now();
+
+                const atualizada =
+                    lista.filter(item =>
+                        agora - item.timestamp < 15000
+                    );
+
+                if (atualizada.length > 0) {
+
+                    exclusoesPendentes.set(
+                        chave,
+                        atualizada
+                    );
+
+                } else {
+
+                    exclusoesPendentes.delete(
+                        chave
+                    );
+
+                }
+
+            }, 16000);
 
         } catch (error) {
 
             console.error(
-                `Erro ao consultar Audit Log (tentativa ${tentativa + 1}):`,
+                'Erro ao processar Audit Log:',
                 error
             );
 
         }
-
-        // Esperar antes da próxima tentativa.
-        if (tentativa < 2) {
-
-            await new Promise(resolve => {
-                setTimeout(resolve, 500);
-            });
-
-        }
     }
-
-    // Se não conseguiu identificar com segurança,
-    // simplesmente não mostra "Desconhecido".
-    return null;
-}
+);
 
 // ==============================
 // MENSAGEM EDITADA
@@ -312,19 +379,71 @@ client.on('messageDelete', async (message) => {
             : '*Conteúdo não disponível*';
 
         // ==============================
-        // VERIFICAR QUEM EXCLUIU
+        // DESCOBRIR QUEM EXCLUIU
         // ==============================
-
-        const executor =
-            await descobrirQuemExcluiu(message);
 
         let excluidaPor = null;
 
-        if (executor) {
+        if (
+            message.author &&
+            message.channel
+        ) {
 
-            excluidaPor =
-                `${executor}`;
+            const chave =
+                `${message.author.id}:${message.channel.id}`;
 
+            const lista =
+                exclusoesPendentes.get(chave);
+
+            if (
+                lista &&
+                lista.length > 0
+            ) {
+
+                // Pegamos a exclusão mais antiga
+                // correspondente a essa combinação
+                // de autor + canal.
+
+                const exclusao =
+                    lista.shift();
+
+                if (
+                    lista.length > 0
+                ) {
+
+                    exclusoesPendentes.set(
+                        chave,
+                        lista
+                    );
+
+                } else {
+
+                    exclusoesPendentes.delete(
+                        chave
+                    );
+
+                }
+
+                if (
+                    exclusao &&
+                    exclusao.executor
+                ) {
+
+                    // Se a própria pessoa apagou
+                    // a própria mensagem, não mostra.
+                    if (
+                        exclusao.executor.id !==
+                        message.author.id
+                    ) {
+
+                        excluidaPor =
+                            `${exclusao.executor}`;
+
+                    }
+
+                }
+
+            }
         }
 
         // ==============================
@@ -570,13 +689,11 @@ client.on(
             // CANAL
             // ==============================
 
-            // Menção real e clicável
             const canalMarcado =
                 message.channel
                     ? `<#${message.channel.id}>`
                     : 'Canal desconhecido';
 
-            // Nome do canal SEM #
             const nomeCanal =
                 message.channel
                     ? message.channel.name
