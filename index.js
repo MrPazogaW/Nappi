@@ -73,6 +73,7 @@ function horarioBrasil() {
 
 async function enviarLog(guild, embeds, arquivos = []) {
     try {
+
         const canalLogs = guild.channels.cache.get(
             process.env.LOG_CHANNEL_ID
         );
@@ -88,7 +89,12 @@ async function enviarLog(guild, embeds, arquivos = []) {
         });
 
     } catch (error) {
-        console.error('Erro ao enviar log:', error);
+
+        console.error(
+            'Erro ao enviar log:',
+            error
+        );
+
     }
 }
 
@@ -102,11 +108,17 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
 
         if (!mensagemNova.guild) return;
 
-        if (mensagemNova.author && mensagemNova.author.bot) {
+        if (
+            mensagemNova.author &&
+            mensagemNova.author.bot
+        ) {
             return;
         }
 
-        if (mensagemAntiga.content === mensagemNova.content) {
+        if (
+            mensagemAntiga.content ===
+            mensagemNova.content
+        ) {
             return;
         }
 
@@ -130,6 +142,7 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
                 name: mensagemNova.author
                     ? mensagemNova.author.username
                     : 'Usuário desconhecido',
+
                 iconURL: mensagemNova.author
                     ? mensagemNova.author.displayAvatarURL()
                     : undefined
@@ -150,13 +163,23 @@ ${depois}
 \`\`\``
             )
             .setFooter({
-                text: `🕐 ${horarioBrasil()}\nID: ${mensagemNova.id}`
+                text:
+                    `🕐 ${horarioBrasil()}\n` +
+                    `ID: ${mensagemNova.id}`
             });
 
-        await enviarLog(mensagemNova.guild, [embed]);
+        await enviarLog(
+            mensagemNova.guild,
+            [embed]
+        );
 
     } catch (error) {
-        console.error('Erro ao registrar mensagem editada:', error);
+
+        console.error(
+            'Erro ao registrar mensagem editada:',
+            error
+        );
+
     }
 });
 
@@ -170,7 +193,10 @@ client.on('messageDelete', async (message) => {
 
         if (!message.guild) return;
 
-        if (message.author && message.author.bot) {
+        if (
+            message.author &&
+            message.author.bot
+        ) {
             return;
         }
 
@@ -192,34 +218,51 @@ client.on('messageDelete', async (message) => {
 
         try {
 
-            const logs = await message.guild.fetchAuditLogs({
-                type: AuditLogEvent.MessageDelete,
-                limit: 10
-            });
+            const logs =
+                await message.guild.fetchAuditLogs({
+                    type: AuditLogEvent.MessageDelete,
+                    limit: 10
+                });
 
-            const entrada = logs.entries.find(entry => {
+            const entrada =
+                logs.entries.find(entry => {
 
-                if (!entry.target) return false;
+                    if (!entry.target) {
+                        return false;
+                    }
 
-                const mesmoUsuario =
-                    entry.target.id === message.author?.id;
+                    const mesmoUsuario =
+                        entry.target.id ===
+                        message.author?.id;
 
-                const mesmoCanal =
-                    entry.extra?.channel?.id === message.channel?.id;
+                    const mesmoCanal =
+                        entry.extra?.channel?.id ===
+                        message.channel?.id;
 
-                const recente =
-                    Date.now() - entry.createdTimestamp < 10000;
+                    const recente =
+                        Date.now() -
+                        entry.createdTimestamp <
+                        10000;
 
-                return mesmoUsuario && mesmoCanal && recente;
-            });
+                    return (
+                        mesmoUsuario &&
+                        mesmoCanal &&
+                        recente
+                    );
+
+                });
 
             if (
                 entrada &&
                 entrada.executor &&
                 message.author &&
-                entrada.executor.id !== message.author.id
+                entrada.executor.id !==
+                message.author.id
             ) {
-                excluidaPor = `${entrada.executor}`;
+
+                excluidaPor =
+                    `${entrada.executor}`;
+
             }
 
         } catch (error) {
@@ -232,7 +275,7 @@ client.on('messageDelete', async (message) => {
         }
 
         // ==============================
-        // DESCRIÇÃO DO LOG
+        // DESCRIÇÃO
         // ==============================
 
         let descricao = `
@@ -258,18 +301,26 @@ ${conteudo}
         // ==============================
 
         const arquivos = [];
-        const anexos = [...message.attachments.values()];
 
-        for (let i = 0; i < anexos.length; i++) {
+        const anexos =
+            [...message.attachments.values()];
+
+        for (
+            let i = 0;
+            i < anexos.length;
+            i++
+        ) {
 
             const anexo = anexos[i];
 
             const nomeOriginal =
-                anexo.name || `arquivo-${i + 1}`;
+                anexo.name ||
+                `arquivo-${i + 1}`;
 
             try {
 
-                const resposta = await fetch(anexo.url);
+                const resposta =
+                    await fetch(anexo.url);
 
                 if (!resposta.ok) {
 
@@ -280,9 +331,10 @@ ${conteudo}
                     continue;
                 }
 
-                const buffer = Buffer.from(
-                    await resposta.arrayBuffer()
-                );
+                const buffer =
+                    Buffer.from(
+                        await resposta.arrayBuffer()
+                    );
 
                 arquivos.push({
                     attachment: buffer,
@@ -305,21 +357,27 @@ ${conteudo}
 
         const embeds = [];
 
-        const embedPrincipal = new EmbedBuilder()
-            .setColor('#9B111E')
-            .setAuthor({
-                name: message.author
-                    ? message.author.username
-                    : 'Usuário desconhecido',
-                iconURL: message.author
-                    ? message.author.displayAvatarURL()
-                    : undefined
-            })
-            .setTitle('🗑️ Mensagem excluída')
-            .setDescription(descricao)
-            .setFooter({
-                text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
-            });
+        const embedPrincipal =
+            new EmbedBuilder()
+                .setColor('#9B111E')
+                .setAuthor({
+                    name: message.author
+                        ? message.author.username
+                        : 'Usuário desconhecido',
+
+                    iconURL: message.author
+                        ? message.author.displayAvatarURL()
+                        : undefined
+                })
+                .setTitle(
+                    '🗑️ Mensagem excluída'
+                )
+                .setDescription(descricao)
+                .setFooter({
+                    text:
+                        `🕐 ${horarioBrasil()}\n` +
+                        `ID: ${message.id}`
+                });
 
         embeds.push(embedPrincipal);
 
@@ -327,16 +385,21 @@ ${conteudo}
         // MOSTRAR TODAS AS IMAGENS/GIFS
         // ==============================
 
-        for (let i = 0; i < arquivos.length; i++) {
+        for (
+            let i = 0;
+            i < arquivos.length;
+            i++
+        ) {
 
             const arquivo = arquivos[i];
 
             const ehImagem =
-                /\.(png|jpe?g|webp|gif)$/i.test(
-                    arquivo.name
-                );
+                /\.(png|jpe?g|webp|gif)$/i
+                    .test(arquivo.name);
 
-            if (!ehImagem) continue;
+            if (!ehImagem) {
+                continue;
+            }
 
             if (i === 0) {
 
@@ -346,11 +409,12 @@ ${conteudo}
 
             } else {
 
-                const embedImagem = new EmbedBuilder()
-                    .setColor('#9B111E')
-                    .setImage(
-                        `attachment://${arquivo.name}`
-                    );
+                const embedImagem =
+                    new EmbedBuilder()
+                        .setColor('#9B111E')
+                        .setImage(
+                            `attachment://${arquivo.name}`
+                        );
 
                 embeds.push(embedImagem);
             }
@@ -380,140 +444,221 @@ ${conteudo}
 // REAÇÃO REMOVIDA
 // ==============================
 
-client.on('messageReactionRemove', async (reaction, user) => {
+client.on(
+    'messageReactionRemove',
+    async (reaction, user) => {
 
-    try {
+        try {
 
-        if (user.bot) return;
+            // Ignorar bots
+            if (user.bot) return;
 
-        // ==============================
-        // BUSCAR REAÇÃO
-        // ==============================
+            // ==============================
+            // BUSCAR REAÇÃO
+            // ==============================
 
-        if (reaction.partial) {
+            if (reaction.partial) {
 
-            try {
+                try {
 
-                await reaction.fetch();
+                    await reaction.fetch();
 
-            } catch (error) {
+                } catch (error) {
 
-                console.error(
-                    'Não foi possível buscar a reação:',
-                    error
-                );
+                    console.error(
+                        'Não foi possível buscar a reação:',
+                        error
+                    );
 
+                    return;
+                }
+            }
+
+            // ==============================
+            // BUSCAR MENSAGEM
+            // ==============================
+
+            if (reaction.message.partial) {
+
+                try {
+
+                    await reaction.message.fetch();
+
+                } catch (error) {
+
+                    console.error(
+                        'Não foi possível buscar a mensagem da reação:',
+                        error
+                    );
+
+                    return;
+                }
+            }
+
+            const message =
+                reaction.message;
+
+            if (!message.guild) {
                 return;
             }
-        }
 
-        // ==============================
-        // BUSCAR MENSAGEM
-        // ==============================
+            // ==============================
+            // INFORMAÇÕES
+            // ==============================
 
-        if (reaction.message.partial) {
+            const emoji =
+                reaction.emoji;
 
-            try {
+            const nomeEmoji =
+                emoji.name ||
+                emoji.toString();
 
-                await reaction.message.fetch();
+            // ==============================
+            // CANAL
+            // ==============================
 
-            } catch (error) {
+            const canalMarcado =
+                message.channel
+                    ? `<#${message.channel.id}>`
+                    : 'Canal desconhecido';
 
-                console.error(
-                    'Não foi possível buscar a mensagem da reação:',
-                    error
-                );
+            const nomeCanal =
+                message.channel
+                    ? `#${message.channel.name}`
+                    : 'Canal desconhecido';
 
-                return;
-            }
-        }
+            // ==============================
+            // EMBED
+            // ==============================
 
-        const message = reaction.message;
+            const embed =
+                new EmbedBuilder()
+                    .setColor('#8A00C4')
 
-        if (!message.guild) return;
+                    // FOTO + NOME + ID
+                    .setAuthor({
+                        name:
+                            `${user.username}\n${user.id}`,
 
-        // ==============================
-        // INFORMAÇÕES DA REAÇÃO
-        // ==============================
+                        iconURL:
+                            user.displayAvatarURL()
+                    })
 
-        const emoji = reaction.emoji;
-
-        const nomeEmoji =
-            emoji.name || emoji.toString();
-
-        const canal = message.channel
-            ? `#${message.channel.name}`
-            : 'Canal desconhecido';
-
-        // ==============================
-        // EMBED
-        // ==============================
-
-        const embed = new EmbedBuilder()
-            .setColor('#8A00C4')
-            .setAuthor({
-                name: `${user.username} • ${user.id}`,
-                iconURL: user.displayAvatarURL()
-            })
-            .setDescription(
+                    .setDescription(
 `
 **Canal:**
-${canal}
+${canalMarcado}
 
 **Emoji:** ${nomeEmoji}
 `
-            )
-            .setFooter({
-                text: `🔴 Reaction Removed • ${canal} • ${horarioBrasil()}`
-            });
+                    )
 
-        // ==============================
-        // EMOJI NO CANTO SUPERIOR DIREITO
-        // ==============================
+                    .setFooter({
+                        text:
+                            `🔴 Reaction Removed • ${nomeCanal}\n` +
+                            `${horarioBrasil()}`
+                    });
 
-        if (emoji.id && emoji.url) {
+            // ==============================
+            // EMOJI NO CANTO SUPERIOR DIREITO
+            // ==============================
 
-            embed.setThumbnail(emoji.url);
+            if (
+                emoji.id &&
+                emoji.url
+            ) {
+
+                // Emoji personalizado
+                embed.setThumbnail(
+                    emoji.url
+                );
+
+            } else {
+
+                // ==============================
+                // EMOJI NORMAL
+                // ==============================
+
+                const codigoEmoji =
+                    emoji.toString()
+                        .codePointAt(0)
+                        .toString(16);
+
+                const urlEmoji =
+                    `https://cdn.jsdelivr.net/gh/` +
+                    `twitter/twemoji@latest/assets/72x72/` +
+                    `${codigoEmoji}.png`;
+
+                // Também fica no canto superior direito
+                embed.setThumbnail(
+                    urlEmoji
+                );
+            }
+
+            // ==============================
+            // ENVIAR LOG
+            // ==============================
+
+            await enviarLog(
+                message.guild,
+                [embed]
+            );
+
+        } catch (error) {
+
+            console.error(
+                'Erro ao registrar reação removida:',
+                error
+            );
 
         }
-
-        // ==============================
-        // ENVIAR LOG
-        // ==============================
-
-        await enviarLog(
-            message.guild,
-            [embed]
-        );
-
-    } catch (error) {
-
-        console.error(
-            'Erro ao registrar reação removida:',
-            error
-        );
-
     }
-});
+);
 
 // ==============================
 // ERROS DO BOT
 // ==============================
 
-client.on('error', error => {
-    console.error('Erro no cliente Discord:', error);
-});
+client.on(
+    'error',
+    error => {
 
-process.on('unhandledRejection', error => {
-    console.error('Erro não tratado:', error);
-});
+        console.error(
+            'Erro no cliente Discord:',
+            error
+        );
 
-process.on('uncaughtException', error => {
-    console.error('Exceção não tratada:', error);
-});
+    }
+);
+
+process.on(
+    'unhandledRejection',
+    error => {
+
+        console.error(
+            'Erro não tratado:',
+            error
+        );
+
+    }
+);
+
+process.on(
+    'uncaughtException',
+    error => {
+
+        console.error(
+            'Exceção não tratada:',
+            error
+        );
+
+    }
+);
 
 // ==============================
 // LOGIN
 // ==============================
 
-client.login(process.env.TOKEN);
+client.login(
+    process.env.TOKEN
+);
