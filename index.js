@@ -44,7 +44,7 @@ client.once('ready', () => {
 });
 
 // ==============================
-// HORÁRIO DO BRASIL
+// HORÁRIO DE BRASÍLIA
 // ==============================
 
 function horarioBrasil() {
@@ -110,9 +110,10 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
 
     const embed = new EmbedBuilder()
         .setColor('#FFC222')
-        .setTitle('✏️ Mensagem editada')
         .setDescription(
-`👤 **Usuário:** ${usuario}
+`# ✏️ Mensagem editada
+
+👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
 
 **Antes:**
@@ -122,11 +123,11 @@ ${antes}
 **Depois:**
 \`\`\`
 ${depois}
-\`\`\`
-
--# 🕐 ${horarioBrasil()}
--# ID: ${mensagemNova.id}`
-        );
+\`\`\``
+        )
+        .setFooter({
+            text: `🕐 ${horarioBrasil()}\nID: ${mensagemNova.id}`
+        });
 
     await enviarLog(mensagemNova.guild, embed);
 });
@@ -152,19 +153,20 @@ client.on('messageDelete', async (message) => {
 
     const embed = new EmbedBuilder()
         .setColor('#9B111E')
-        .setTitle('🗑️ Mensagem excluída')
         .setDescription(
-`👤 **Usuário:** ${usuario}
+`# 🗑️ Mensagem excluída
+
+👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
 
 **Mensagem:**
 \`\`\`
 ${conteudo}
-\`\`\`
-
--# 🕐 ${horarioBrasil()}
--# ID: ${message.id}`
-        );
+\`\`\``
+        )
+        .setFooter({
+            text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
+        });
 
     await enviarLog(message.guild, embed);
 });
