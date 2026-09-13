@@ -4,7 +4,6 @@ const {
     Client,
     GatewayIntentBits,
     EmbedBuilder,
-    AuditLogEvent,
     Partials
 } = require('discord.js');
 
@@ -184,124 +183,6 @@ ${depois}
 });
 
 // ==============================
-// ESPERAR
-// ==============================
-
-function esperar(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// ==============================
-// DESCOBRIR QUEM EXCLUIU
-// ==============================
-
-async function descobrirQuemExcluiu(message) {
-
-    if (!message.guild) {
-        return null;
-    }
-
-    if (!message.author) {
-        return null;
-    }
-
-    // O Discord pode demorar um pouco para
-    // registrar a exclusão no Audit Log.
-    const tentativas = [
-        500,
-        1500,
-        3000,
-        5000
-    ];
-
-    for (const atraso of tentativas) {
-
-        await esperar(atraso);
-
-        try {
-
-            const logs =
-                await message.guild.fetchAuditLogs({
-                    type: AuditLogEvent.MessageDelete,
-                    limit: 20
-                });
-
-            const entradas =
-                [...logs.entries.values()]
-                    .sort(
-                        (a, b) =>
-                            b.createdTimestamp -
-                            a.createdTimestamp
-                    );
-
-            for (const entrada of entradas) {
-
-                if (!entrada.executor) {
-                    continue;
-                }
-
-                // O Audit Log normalmente identifica
-                // o autor da mensagem excluída.
-                const idDoAutor =
-                    entrada.targetId ||
-                    entrada.target?.id;
-
-                if (
-                    idDoAutor !==
-                    message.author.id
-                ) {
-                    continue;
-                }
-
-                // Canal da exclusão.
-                const idDoCanal =
-                    entrada.extra?.channel?.id ||
-                    entrada.extra?.channelId;
-
-                if (
-                    idDoCanal &&
-                    message.channel &&
-                    idDoCanal !==
-                    message.channel.id
-                ) {
-                    continue;
-                }
-
-                // A entrada precisa ser recente.
-                const diferenca =
-                    Date.now() -
-                    entrada.createdTimestamp;
-
-                if (diferenca > 15000) {
-                    continue;
-                }
-
-                // Se o próprio autor apagou a mensagem,
-                // não mostramos "Excluída por".
-                if (
-                    entrada.executor.id ===
-                    message.author.id
-                ) {
-                    return null;
-                }
-
-                return entrada.executor;
-            }
-
-        } catch (error) {
-
-            console.error(
-                'Erro ao verificar quem excluiu a mensagem:',
-                error
-            );
-
-        }
-    }
-
-    return null;
-}
-
-// ==============================
 // MENSAGEM EXCLUÍDA
 // ==============================
 
@@ -329,34 +210,12 @@ client.on('messageDelete', async (message) => {
             : '*Conteúdo não disponível*';
 
         // ==============================
-        // VERIFICAR QUEM EXCLUIU
-        // ==============================
-
-        const executor =
-            await descobrirQuemExcluiu(message);
-
-        let excluidaPor = null;
-
-        if (executor) {
-            excluidaPor = `${executor}`;
-        }
-
-        // ==============================
         // DESCRIÇÃO
         // ==============================
 
-        let descricao = `
+        const descricao = `
 👤 **Usuário:** ${usuario}
-📍 **Canal:** ${canal}`;
-
-        if (excluidaPor) {
-
-            descricao += `
-👮 **Excluída por:** ${excluidaPor}`;
-
-        }
-
-        descricao += `
+📍 **Canal:** ${canal}
 
 **Mensagem:**
 \`\`\`
@@ -655,9 +514,7 @@ ${canalMarcado}
                     `twitter/twemoji@latest/assets/72x72/` +
                     `${codigoEmoji}.png`;
 
-                embed.setThumbnail(
-                    urlEmoji
-                );
+                embed.setThumbnail(urlEmoji);
             }
 
             // ==============================
