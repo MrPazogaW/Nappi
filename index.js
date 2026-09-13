@@ -91,37 +91,44 @@ async function enviarLog(guild, embed, arquivos = []) {
 
 client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
 
-    if (!mensagemNova.guild) return;
-    if (mensagemNova.author && mensagemNova.author.bot) return;
+    try {
 
-    if (mensagemAntiga.content === mensagemNova.content) return;
+        if (!mensagemNova.guild) return;
 
-    const usuario = mensagemNova.author
-        ? `${mensagemNova.author}`
-        : 'Usuário desconhecido';
+        if (mensagemNova.author && mensagemNova.author.bot) {
+            return;
+        }
 
-    const canal = `${mensagemNova.channel}`;
+        if (mensagemAntiga.content === mensagemNova.content) {
+            return;
+        }
 
-    const antes = mensagemAntiga.content
-        ? mensagemAntiga.content.substring(0, 1000)
-        : '*Conteúdo não disponível*';
+        const usuario = mensagemNova.author
+            ? `${mensagemNova.author}`
+            : 'Usuário desconhecido';
 
-    const depois = mensagemNova.content
-        ? mensagemNova.content.substring(0, 1000)
-        : '*Sem texto*';
+        const canal = `${mensagemNova.channel}`;
 
-    const embed = new EmbedBuilder()
-        .setColor('#FFC222')
-        .setAuthor({
-            name: mensagemNova.author
-                ? mensagemNova.author.username
-                : 'Usuário desconhecido',
-            iconURL: mensagemNova.author
-                ? mensagemNova.author.displayAvatarURL()
-                : undefined
-        })
-        .setTitle('✏️ Mensagem editada')
-        .setDescription(
+        const antes = mensagemAntiga.content
+            ? mensagemAntiga.content.substring(0, 1000)
+            : '*Conteúdo não disponível*';
+
+        const depois = mensagemNova.content
+            ? mensagemNova.content.substring(0, 1000)
+            : '*Sem texto*';
+
+        const embed = new EmbedBuilder()
+            .setColor('#FFC222')
+            .setAuthor({
+                name: mensagemNova.author
+                    ? mensagemNova.author.username
+                    : 'Usuário desconhecido',
+                iconURL: mensagemNova.author
+                    ? mensagemNova.author.displayAvatarURL()
+                    : undefined
+            })
+            .setTitle('✏️ Mensagem editada')
+            .setDescription(
 `
 👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
@@ -134,12 +141,16 @@ ${antes}
 \`\`\`
 ${depois}
 \`\`\``
-        )
-        .setFooter({
-            text: `🕐 ${horarioBrasil()}\nID: ${mensagemNova.id}`
-        });
+            )
+            .setFooter({
+                text: `🕐 ${horarioBrasil()}\nID: ${mensagemNova.id}`
+            });
 
-    await enviarLog(mensagemNova.guild, embed);
+        await enviarLog(mensagemNova.guild, embed);
+
+    } catch (error) {
+        console.error('Erro ao registrar mensagem editada:', error);
+    }
 });
 
 // ==============================
@@ -148,173 +159,219 @@ ${depois}
 
 client.on('messageDelete', async (message) => {
 
-    if (!message.guild) return;
-    if (message.author && message.author.bot) return;
-
-    const usuario = message.author
-        ? `${message.author}`
-        : 'Usuário desconhecido';
-
-    const canal = `${message.channel}`;
-
-    const conteudo = message.content
-        ? message.content.substring(0, 1000)
-        : '*Conteúdo não disponível*';
-
-    // ==============================
-    // VERIFICAR QUEM EXCLUIU
-    // ==============================
-
-    let excluidaPor = null;
-
     try {
-        const logs = await message.guild.fetchAuditLogs({
-            type: AuditLogEvent.MessageDelete,
-            limit: 10
-        });
 
-        const entrada = logs.entries.find(entry => {
+        if (!message.guild) return;
 
-            if (!entry.target) return false;
-
-            const mesmoUsuario =
-                entry.target.id === message.author?.id;
-
-            const mesmoCanal =
-                entry.extra?.channel?.id === message.channel?.id;
-
-            const recente =
-                Date.now() - entry.createdTimestamp < 10000;
-
-            return mesmoUsuario && mesmoCanal && recente;
-        });
-
-        if (
-            entrada &&
-            entrada.executor &&
-            message.author &&
-            entrada.executor.id !== message.author.id
-        ) {
-            excluidaPor = `${entrada.executor}`;
+        if (message.author && message.author.bot) {
+            return;
         }
 
-    } catch (error) {
-        console.error(
-            'Erro ao verificar quem excluiu a mensagem:',
-            error
-        );
-    }
+        const usuario = message.author
+            ? `${message.author}`
+            : 'Usuário desconhecido';
 
-    // ==============================
-    // DESCRIÇÃO DO LOG
-    // ==============================
+        const canal = `${message.channel}`;
 
-    let descricao = `
+        const conteudo = message.content
+            ? message.content.substring(0, 1000)
+            : '*Conteúdo não disponível*';
+
+        // ==============================
+        // VERIFICAR QUEM EXCLUIU
+        // ==============================
+
+        let excluidaPor = null;
+
+        try {
+
+            const logs = await message.guild.fetchAuditLogs({
+                type: AuditLogEvent.MessageDelete,
+                limit: 10
+            });
+
+            const entrada = logs.entries.find(entry => {
+
+                if (!entry.target) return false;
+
+                const mesmoUsuario =
+                    entry.target.id === message.author?.id;
+
+                const mesmoCanal =
+                    entry.extra?.channel?.id === message.channel?.id;
+
+                const recente =
+                    Date.now() - entry.createdTimestamp < 10000;
+
+                return mesmoUsuario && mesmoCanal && recente;
+            });
+
+            if (
+                entrada &&
+                entrada.executor &&
+                message.author &&
+                entrada.executor.id !== message.author.id
+            ) {
+                excluidaPor = `${entrada.executor}`;
+            }
+
+        } catch (error) {
+
+            console.error(
+                'Erro ao verificar quem excluiu a mensagem:',
+                error
+            );
+
+        }
+
+        // ==============================
+        // DESCRIÇÃO DO LOG
+        // ==============================
+
+        let descricao = `
 👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}`;
 
-    if (excluidaPor) {
-        descricao += `
-👮 **Excluída por:** ${excluidaPor}`;
-    }
+        if (excluidaPor) {
 
-    descricao += `
+            descricao += `
+👮 **Excluída por:** ${excluidaPor}`;
+
+        }
+
+        descricao += `
 
 **Mensagem:**
 \`\`\`
 ${conteudo}
 \`\`\``;
 
-    // ==============================
-    // COPIAR IMAGENS E GIFS
-    // ==============================
+        // ==============================
+        // COPIAR IMAGENS E GIFS
+        // ==============================
 
-    const arquivos = [];
-    const anexos = [...message.attachments.values()];
+        const arquivos = [];
+        const anexos = [...message.attachments.values()];
 
-    for (let i = 0; i < anexos.length; i++) {
+        for (let i = 0; i < anexos.length; i++) {
 
-        const anexo = anexos[i];
+            const anexo = anexos[i];
 
-        const nomeOriginal = anexo.name || `arquivo-${i + 1}`;
+            const nomeOriginal =
+                anexo.name || `arquivo-${i + 1}`;
 
-        try {
+            try {
 
-            const resposta = await fetch(anexo.url);
+                const resposta = await fetch(anexo.url);
 
-            if (!resposta.ok) {
-                console.log(
-                    `Não foi possível baixar o anexo: ${nomeOriginal}`
+                if (!resposta.ok) {
+
+                    console.log(
+                        `Não foi possível baixar o anexo: ${nomeOriginal}`
+                    );
+
+                    continue;
+                }
+
+                const buffer = Buffer.from(
+                    await resposta.arrayBuffer()
                 );
-                continue;
+
+                arquivos.push({
+                    attachment: buffer,
+                    name: nomeOriginal
+                });
+
+            } catch (error) {
+
+                console.error(
+                    `Erro ao salvar o anexo ${nomeOriginal}:`,
+                    error
+                );
+
             }
+        }
 
-            const buffer = Buffer.from(
-                await resposta.arrayBuffer()
-            );
+        // ==============================
+        // EMBED
+        // ==============================
 
-            arquivos.push({
-                attachment: buffer,
-                name: nomeOriginal
+        const embed = new EmbedBuilder()
+            .setColor('#9B111E')
+            .setAuthor({
+                name: message.author
+                    ? message.author.username
+                    : 'Usuário desconhecido',
+                iconURL: message.author
+                    ? message.author.displayAvatarURL()
+                    : undefined
+            })
+            .setTitle('🗑️ Mensagem excluída')
+            .setDescription(descricao)
+            .setFooter({
+                text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
             });
 
-        } catch (error) {
-            console.error(
-                `Erro ao salvar o anexo ${nomeOriginal}:`,
-                error
-            );
+        // ==============================
+        // MOSTRAR A PRIMEIRA IMAGEM/GIF
+        // ==============================
+
+        if (arquivos.length > 0) {
+
+            const primeiroArquivo = arquivos[0];
+
+            const ehImagem =
+                /\.(png|jpe?g|webp|gif)$/i.test(
+                    primeiroArquivo.name
+                );
+
+            if (ehImagem) {
+
+                embed.setImage(
+                    `attachment://${primeiroArquivo.name}`
+                );
+
+            }
         }
+
+        // ==============================
+        // ENVIAR LOG
+        // ==============================
+
+        await enviarLog(
+            message.guild,
+            embed,
+            arquivos
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Erro ao registrar mensagem excluída:',
+            error
+        );
+
     }
+});
 
-    // ==============================
-    // EMBED
-    // ==============================
+// ==============================
+// ERROS DO BOT
+// ==============================
 
-    const embed = new EmbedBuilder()
-        .setColor('#9B111E')
-        .setAuthor({
-            name: message.author
-                ? message.author.username
-                : 'Usuário desconhecido',
-            iconURL: message.author
-                ? message.author.displayAvatarURL()
-                : undefined
-        })
-        .setTitle('🗑️ Mensagem excluída')
-        .setDescription(descricao)
-        .setFooter({
-            text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
-        });
+client.on('error', error => {
+    console.error('Erro no cliente Discord:', error);
+});
 
-    // ==============================
-    // MOSTRAR A IMAGEM/GIF NO LOG
-    // ==============================
+process.on('unhandledRejection', error => {
+    console.error('Erro não tratado:', error);
+});
 
-    if (arquivos.length > 0) {
-
-        const primeiroArquivo = arquivos[0];
-
-        const ehImagem =
-            /\.(png|jpe?g|webp|gif)$/i.test(
-                primeiroArquivo.name
-            );
-
-        if (ehImagem) {
-            embed.setImage(
-                `attachment://${primeiroArquivo.name}`
-            );
-        }
-    }
-
-    await enviarLog(
-        message.guild,
-        embed,
-        arquivos
-    );
+process.on('uncaughtException', error => {
+    console.error('Exceção não tratada:', error);
 });
 
 // ==============================
 // LOGIN
 // ==============================
 
-client.login(process.env.TOKEN);w
+client.login(process.env.TOKEN);
