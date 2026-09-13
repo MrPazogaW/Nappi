@@ -161,36 +161,75 @@ client.on('messageDelete', async (message) => {
         : '*Conteúdo não disponível*';
 
     // ==============================
-    // DESCOBRIR QUEM EXCLUIU
+    // VERIFICAR QUEM EXCLUIU
     // ==============================
 
-    let excluidaPor = 'Desconhecido';
+    let excluidaPor = null;
 
     try {
         const logs = await message.guild.fetchAuditLogs({
             type: AuditLogEvent.MessageDelete,
-            limit: 5
+            limit: 10
         });
 
         const entrada = logs.entries.find(entry => {
+
             if (!entry.target) return false;
 
+            // A entrada precisa ser do mesmo autor da mensagem
             const mesmoUsuario =
                 entry.target.id === message.author?.id;
 
+            // Precisa ser uma exclusão recente
             const recente =
                 Date.now() - entry.createdTimestamp < 10000;
 
             return mesmoUsuario && recente;
         });
 
-        if (entrada && entrada.executor) {
+        // Só considera como "outra pessoa"
+        // se o executor for diferente do autor
+        if (
+            entrada &&
+            entrada.executor &&
+            message.author &&
+            entrada.executor.id !== message.author.id
+        ) {
             excluidaPor = `${entrada.executor}`;
         }
 
     } catch (error) {
-        console.error('Erro ao verificar quem excluiu a mensagem:', error);
+        console.error(
+            'Erro ao verificar quem excluiu a mensagem:',
+            error
+        );
     }
+
+    // ==============================
+    // DESCRIÇÃO DO LOG
+    // ==============================
+
+    let descricao = `
+👤 **Usuário:** ${usuario}
+📍 **Canal:** ${canal}`;
+
+    // Só adiciona "Excluída por"
+    // quando realmente foi outra pessoa
+    if (excluidaPor) {
+        descricao += `
+👮 **Excluída por:** ${excluidaPor}`;
+    }
+
+    descricao += `
+
+**Mensagem:**
+\`\`\`
+${conteudo}
+\`\`\``;
+
+    // ==============================
+    // EMBED
+    // ==============================
 
     const embed = new EmbedBuilder()
         .setColor('#9B111E')
@@ -203,17 +242,7 @@ client.on('messageDelete', async (message) => {
                 : undefined
         })
         .setTitle('🗑️ Mensagem excluída')
-        .setDescription(
-`
-👤 **Usuário:** ${usuario}
-📍 **Canal:** ${canal}
-👮 **Excluída por:** ${excluidaPor}
-
-**Mensagem:**
-\`\`\`
-${conteudo}
-\`\`\``
-        )
+        .setDescription(descricao)
         .setFooter({
             text: `🕐 ${horarioBrasil()}\nID: ${message.id}`
         });
