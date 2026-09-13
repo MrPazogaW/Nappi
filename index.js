@@ -34,10 +34,7 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMessageReactions,
-
-        // Necessário para receber eventos do Audit Log
-        GatewayIntentBits.GuildModeration
+        GatewayIntentBits.GuildMessageReactions
     ],
     partials: [
         Partials.Message,
@@ -45,20 +42,6 @@ const client = new Client({
         Partials.Reaction
     ]
 });
-
-// ==============================
-// EXCLUSÕES DETECTADAS PELO
-// AUDIT LOG
-// ==============================
-
-// Guarda temporariamente as exclusões detectadas.
-// A chave é:
-// autor da mensagem + canal
-//
-// Exemplo:
-// "123456789:987654321"
-//
-const exclusoesPendentes = new Map();
 
 // ==============================
 // BOT ONLINE
@@ -81,6 +64,16 @@ function horarioBrasil() {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
+    });
+}
+
+// ==============================
+// ESPERAR
+// ==============================
+
+function esperar(ms) {
+    return new Promise(resolve => {
+        setTimeout(resolve, ms);
     });
 }
 
@@ -116,155 +109,129 @@ async function enviarLog(guild, embeds, arquivos = []) {
 }
 
 // ==============================
-// AUDIT LOG
-// DETECTAR MENSAGEM EXCLUÍDA
+// DESCOBRIR QUEM EXCLUIU
 // ==============================
 
-client.on(
-    'guildAuditLogEntryCreate',
-    async (auditLogEntry, guild) => {
+async function descobrirQuemExcluiu(message) {
+
+    if (
+        !message.author ||
+        !message.channel
+    ) {
+        return null;
+    }
+
+    // Espera o Discord registrar a exclusão
+    // no Audit Log.
+    await esperar(1000);
+
+    // Faz duas tentativas.
+    for (let tentativa = 1; tentativa <= 2; tentativa++) {
 
         try {
 
-            // ==============================
-            // VERIFICAR SE É EXCLUSÃO
-            // ==============================
-
-            if (
-                auditLogEntry.action !==
-                AuditLogEvent.MessageDelete
-            ) {
-                return;
-            }
-
-            // ==============================
-            // VERIFICAR AUTOR DA MENSAGEM
-            // ==============================
-
-            if (!auditLogEntry.target) {
-                return;
-            }
-
-            // ==============================
-            // VERIFICAR EXECUTOR
-            // ==============================
-
-            if (!auditLogEntry.executor) {
-                return;
-            }
-
-            // ==============================
-            // VERIFICAR CANAL
-            // ==============================
-
-            const canalId =
-                auditLogEntry.extra?.channel?.id;
-
-            if (!canalId) {
-                return;
-            }
-
-            // ==============================
-            // ID DO AUTOR DA MENSAGEM
-            // ==============================
-
-            const autorId =
-                auditLogEntry.target.id;
-
-            // ==============================
-            // ID DE QUEM EXCLUIU
-            // ==============================
-
-            const executorId =
-                auditLogEntry.executor.id;
-
-            // ==============================
-            // CHAVE
-            // ==============================
-
-            const chave =
-                `${autorId}:${canalId}`;
-
-            // ==============================
-            // GUARDAR EXCLUSÃO
-            // ==============================
-
-            if (!exclusoesPendentes.has(chave)) {
-
-                exclusoesPendentes.set(
-                    chave,
-                    []
-                );
-
-            }
-
-            exclusoesPendentes
-                .get(chave)
-                .push({
-                    executor:
-                        auditLogEntry.executor,
-
-                    timestamp:
-                        Date.now(),
-
-                    auditLogId:
-                        auditLogEntry.id
+            const logs =
+                await message.guild.fetchAuditLogs({
+                    type: AuditLogEvent.MessageDelete,
+                    limit: 20
                 });
 
-            console.log(
-                `Exclusão detectada no Audit Log: ` +
-                `${auditLogEntry.executor.tag || auditLogEntry.executor.username} ` +
-                `apagou uma mensagem de ` +
-                `${auditLogEntry.target.username || auditLogEntry.target.id}`
-            );
+            const agora = Date.now();
 
-            // ==============================
-            // LIMPAR ENTRADAS ANTIGAS
-            // ==============================
+            const entradas =
+                [...logs.entries.values()]
+                    .filter(entry => {
 
-            setTimeout(() => {
+                        // Precisa ter executor
+                        if (!entry.executor) {
+                            return false;
+                        }
 
-                const lista =
-                    exclusoesPendentes.get(chave);
+                        // Precisa ter alvo
+                        if (!entry.target) {
+                            return false;
+                        }
 
-                if (!lista) {
-                    return;
+                        // Autor da mensagem apagada
+                        if (
+                            entry.target.id !==
+                            message.author.id
+                        ) {
+                            return false;
+                        }
+
+                        // Canal da mensagem apagada
+                        if (
+                            entry.extra?.channel?.id !==
+                            message.channel.id
+                        ) {
+                            return false;
+                        }
+
+                        // A entrada precisa ser recente.
+                        // Usamos 15 segundos para dar
+                        // mais margem ao Discord.
+                        if (
+                            agora -
+                            entry.createdTimestamp >
+                            15000
+                        ) {
+                            return false;
+                        }
+
+                        return true;
+
+                    })
+                    .sort(
+                        (a, b) =>
+                            b.createdTimestamp -
+                            a.createdTimestamp
+                    );
+
+            if (entradas.length > 0) {
+
+                const entrada =
+                    entradas[0];
+
+                // Se a própria pessoa apagou
+                // a própria mensagem, não mostrar.
+                if (
+                    entry.executor?.id ===
+                    message.author.id
+                ) {
+                    return null;
                 }
 
-                const agora = Date.now();
+                if (
+                    entrada.executor &&
+                    entrada.executor.id !==
+                    message.author.id
+                ) {
 
-                const atualizada =
-                    lista.filter(item =>
-                        agora - item.timestamp < 15000
-                    );
-
-                if (atualizada.length > 0) {
-
-                    exclusoesPendentes.set(
-                        chave,
-                        atualizada
-                    );
-
-                } else {
-
-                    exclusoesPendentes.delete(
-                        chave
-                    );
+                    return entrada.executor;
 
                 }
 
-            }, 16000);
+            }
 
         } catch (error) {
 
             console.error(
-                'Erro ao processar Audit Log:',
+                `Erro ao consultar Audit Log ` +
+                `(tentativa ${tentativa}):`,
                 error
             );
 
         }
+
+        // Segunda tentativa depois de mais 1 segundo.
+        if (tentativa === 1) {
+            await esperar(1000);
+        }
     }
-);
+
+    return null;
+}
 
 // ==============================
 // MENSAGEM EDITADA
@@ -379,71 +346,16 @@ client.on('messageDelete', async (message) => {
             : '*Conteúdo não disponível*';
 
         // ==============================
-        // DESCOBRIR QUEM EXCLUIU
+        // VERIFICAR QUEM EXCLUIU
         // ==============================
+
+        const executor =
+            await descobrirQuemExcluiu(message);
 
         let excluidaPor = null;
 
-        if (
-            message.author &&
-            message.channel
-        ) {
-
-            const chave =
-                `${message.author.id}:${message.channel.id}`;
-
-            const lista =
-                exclusoesPendentes.get(chave);
-
-            if (
-                lista &&
-                lista.length > 0
-            ) {
-
-                // Pegamos a exclusão mais antiga
-                // correspondente a essa combinação
-                // de autor + canal.
-
-                const exclusao =
-                    lista.shift();
-
-                if (
-                    lista.length > 0
-                ) {
-
-                    exclusoesPendentes.set(
-                        chave,
-                        lista
-                    );
-
-                } else {
-
-                    exclusoesPendentes.delete(
-                        chave
-                    );
-
-                }
-
-                if (
-                    exclusao &&
-                    exclusao.executor
-                ) {
-
-                    // Se a própria pessoa apagou
-                    // a própria mensagem, não mostra.
-                    if (
-                        exclusao.executor.id !==
-                        message.author.id
-                    ) {
-
-                        excluidaPor =
-                            `${exclusao.executor}`;
-
-                    }
-
-                }
-
-            }
+        if (executor) {
+            excluidaPor = `${executor}`;
         }
 
         // ==============================
@@ -707,7 +619,6 @@ client.on(
                 new EmbedBuilder()
                     .setColor('#8A00C4')
 
-                    // FOTO + NOME + ID
                     .setAuthor({
                         name:
                             `${user.username}\n${user.id}`,
@@ -740,16 +651,11 @@ ${canalMarcado}
                 emoji.url
             ) {
 
-                // Emoji personalizado
                 embed.setThumbnail(
                     emoji.url
                 );
 
             } else {
-
-                // ==============================
-                // EMOJI NORMAL
-                // ==============================
 
                 const codigoEmoji =
                     emoji.toString()
@@ -761,7 +667,6 @@ ${canalMarcado}
                     `twitter/twemoji@latest/assets/72x72/` +
                     `${codigoEmoji}.png`;
 
-                // Também fica no canto superior direito
                 embed.setThumbnail(
                     urlEmoji
                 );
