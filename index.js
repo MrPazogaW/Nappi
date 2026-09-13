@@ -503,7 +503,7 @@ client.on(
             }
 
             // ==============================
-            // INFORMAÇÕES
+            // INFORMAÇÕES DO EMOJI
             // ==============================
 
             const emoji =
@@ -517,14 +517,16 @@ client.on(
             // CANAL
             // ==============================
 
+            // Menção real e clicável
             const canalMarcado =
                 message.channel
                     ? `<#${message.channel.id}>`
                     : 'Canal desconhecido';
 
+            // Nome do canal SEM #
             const nomeCanal =
                 message.channel
-                    ? `#${message.channel.name}`
+                    ? message.channel.name
                     : 'Canal desconhecido';
 
             // ==============================
