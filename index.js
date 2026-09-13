@@ -118,9 +118,9 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
                 ? mensagemNova.author.displayAvatarURL()
                 : undefined
         })
+        .setTitle('✏️ Mensagem editada')
         .setDescription(
-`# ✏️ Mensagem editada
-
+`
 👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
 
@@ -169,9 +169,9 @@ client.on('messageDelete', async (message) => {
                 ? message.author.displayAvatarURL()
                 : undefined
         })
+        .setTitle('🗑️ Mensagem excluída')
         .setDescription(
-`# 🗑️ Mensagem excluída
-
+`
 👤 **Usuário:** ${usuario}
 📍 **Canal:** ${canal}
 
