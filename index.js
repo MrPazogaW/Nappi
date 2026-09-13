@@ -6,6 +6,27 @@ const {
     EmbedBuilder
 } = require('discord.js');
 
+const express = require('express');
+
+// ==============================
+// SERVIDOR PARA O RENDER
+// ==============================
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => {
+    res.send('🐾 Bot Discord está online!');
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor web rodando na porta ${PORT}`);
+});
+
+// ==============================
+// BOT DO DISCORD
+// ==============================
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -71,8 +92,14 @@ client.on('messageCreate', (message) => {
                 text: '💙 Nosso objetivo é manter o servidor seguro, divertido e agradável!'
             });
 
-        message.channel.send({ embeds: [regras] });
+        message.channel.send({
+            embeds: [regras]
+        });
     }
 });
+
+// ==============================
+// LOGIN DO BOT
+// ==============================
 
 client.login(process.env.TOKEN);
