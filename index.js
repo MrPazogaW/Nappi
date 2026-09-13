@@ -44,12 +44,14 @@ client.once('ready', () => {
 });
 
 // ==============================
-// FUNÇÃO DE LOG
+// FUNÇÃO PARA ENVIAR LOG
 // ==============================
 
 async function enviarLog(guild, embed) {
     try {
-        const canalLogs = guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
+        const canalLogs = guild.channels.cache.get(
+            process.env.LOG_CHANNEL_ID
+        );
 
         if (!canalLogs) {
             console.log('Canal de logs não encontrado.');
@@ -66,39 +68,6 @@ async function enviarLog(guild, embed) {
 }
 
 // ==============================
-// LOG DE MENSAGEM ENVIADA
-// ==============================
-
-client.on('messageCreate', async (message) => {
-
-    if (message.author.bot) return;
-    if (!message.guild) return;
-
-    const embed = new EmbedBuilder()
-        .setColor('#5B9FFF')
-        .setTitle('💬 Mensagem enviada')
-        .addFields(
-            {
-                name: '👤 Usuário',
-                value: `${message.author} (\`${message.author.id}\`)`
-            },
-            {
-                name: '📍 Canal',
-                value: `${message.channel}`
-            },
-            {
-                name: '📝 Mensagem',
-                value: message.content
-                    ? message.content.substring(0, 1024)
-                    : '*Sem texto*'
-            }
-        )
-        .setTimestamp();
-
-    await enviarLog(message.guild, embed);
-});
-
-// ==============================
 // LOG DE MENSAGEM EDITADA
 // ==============================
 
@@ -107,37 +76,49 @@ client.on('messageUpdate', async (mensagemAntiga, mensagemNova) => {
     if (!mensagemNova.guild) return;
     if (mensagemNova.author?.bot) return;
 
-    // Se o conteúdo não mudou, ignora
+    // Ignora alterações que não mudaram o texto
     if (mensagemAntiga.content === mensagemNova.content) return;
 
+    const usuario = mensagemNova.author
+        ? `${mensagemNova.author}`
+        : 'Usuário desconhecido';
+
+    const idUsuario = mensagemNova.author
+        ? mensagemNova.author.id
+        : 'Desconhecido';
+
+    const canal = `${mensagemNova.channel}`;
+
+    const antes = mensagemAntiga.content
+        ? mensagemAntiga.content.substring(0, 1000)
+        : '*Conteúdo não disponível*';
+
+    const depois = mensagemNova.content
+        ? mensagemNova.content.substring(0, 1000)
+        : '*Sem texto*';
+
     const embed = new EmbedBuilder()
-        .setColor('#FFD166')
-        .setTitle('✏️ Mensagem editada')
-        .addFields(
-            {
-                name: '👤 Usuário',
-                value: mensagemNova.author
-                    ? `${mensagemNova.author} (\`${mensagemNova.author.id}\`)`
-                    : 'Usuário desconhecido'
-            },
-            {
-                name: '📍 Canal',
-                value: `${mensagemNova.channel}`
-            },
-            {
-                name: '📝 Antes',
-                value: mensagemAntiga.content
-                    ? mensagemAntiga.content.substring(0, 1024)
-                    : '*Conteúdo não disponível*'
-            },
-            {
-                name: '✏️ Depois',
-                value: mensagemNova.content
-                    ? mensagemNova.content.substring(0, 1024)
-                    : '*Sem texto*'
-            }
-        )
-        .setTimestamp();
+        .setColor('#FFDE21')
+        .setDescription(
+`✏️ **Mensagem editada**
+
+👤 **Usuário:** ${usuario}
+📍 **Canal:** ${canal}
+
+**Antes:**
+\`\`\`
+${antes}
+\`\`\`
+
+**Depois:**
+\`\`\`
+${depois}
+\`\`\`
+
+🕐 **Horário:** <t:${Math.floor(Date.now() / 1000)}:F>
+
+-# ID: \`${idUsuario}\``
+        );
 
     await enviarLog(mensagemNova.guild, embed);
 });
@@ -151,28 +132,37 @@ client.on('messageDelete', async (message) => {
     if (!message.guild) return;
     if (message.author?.bot) return;
 
+    const usuario = message.author
+        ? `${message.author}`
+        : 'Usuário desconhecido';
+
+    const idUsuario = message.author
+        ? message.author.id
+        : 'Desconhecido';
+
+    const canal = `${message.channel}`;
+
+    const conteudo = message.content
+        ? message.content.substring(0, 1000)
+        : '*Conteúdo não disponível*';
+
     const embed = new EmbedBuilder()
-        .setColor('#FF5B5B')
-        .setTitle('🗑️ Mensagem excluída')
-        .addFields(
-            {
-                name: '👤 Usuário',
-                value: message.author
-                    ? `${message.author} (\`${message.author.id}\`)`
-                    : 'Usuário desconhecido'
-            },
-            {
-                name: '📍 Canal',
-                value: `${message.channel}`
-            },
-            {
-                name: '📝 Mensagem',
-                value: message.content
-                    ? message.content.substring(0, 1024)
-                    : '*Conteúdo não disponível*'
-            }
-        )
-        .setTimestamp();
+        .setColor('#9B111E')
+        .setDescription(
+`🗑️ **Mensagem excluída**
+
+👤 **Usuário:** ${usuario}
+📍 **Canal:** ${canal}
+
+**Mensagem:**
+\`\`\`
+${conteudo}
+\`\`\`
+
+🕐 **Horário:** <t:${Math.floor(Date.now() / 1000)}:F>
+
+-# ID: \`${idUsuario}\``
+        );
 
     await enviarLog(message.guild, embed);
 });
