@@ -4,7 +4,8 @@ const {
     Client,
     GatewayIntentBits,
     EmbedBuilder,
-    AuditLogEvent
+    AuditLogEvent,
+    Partials
 } = require('discord.js');
 
 const express = require('express');
@@ -32,7 +33,13 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions
+    ],
+    partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction
     ]
 });
 
@@ -331,8 +338,6 @@ ${conteudo}
 
             if (!ehImagem) continue;
 
-            // A primeira imagem continua exatamente
-            // como já estava funcionando.
             if (i === 0) {
 
                 embedPrincipal.setImage(
@@ -341,8 +346,6 @@ ${conteudo}
 
             } else {
 
-                // As imagens seguintes agora também
-                // ficam dentro do log como embeds.
                 const embedImagem = new EmbedBuilder()
                     .setColor('#9B111E')
                     .setImage(
@@ -367,6 +370,131 @@ ${conteudo}
 
         console.error(
             'Erro ao registrar mensagem excluída:',
+            error
+        );
+
+    }
+});
+
+// ==============================
+// REAÇÃO REMOVIDA
+// ==============================
+
+client.on('messageReactionRemove', async (reaction, user) => {
+
+    try {
+
+        if (user.bot) return;
+
+        // ==============================
+        // BUSCAR REAÇÃO
+        // ==============================
+
+        if (reaction.partial) {
+
+            try {
+
+                await reaction.fetch();
+
+            } catch (error) {
+
+                console.error(
+                    'Não foi possível buscar a reação:',
+                    error
+                );
+
+                return;
+            }
+        }
+
+        // ==============================
+        // BUSCAR MENSAGEM
+        // ==============================
+
+        if (reaction.message.partial) {
+
+            try {
+
+                await reaction.message.fetch();
+
+            } catch (error) {
+
+                console.error(
+                    'Não foi possível buscar a mensagem da reação:',
+                    error
+                );
+
+                return;
+            }
+        }
+
+        const message = reaction.message;
+
+        if (!message.guild) return;
+
+        // ==============================
+        // INFORMAÇÕES DA REAÇÃO
+        // ==============================
+
+        const emoji = reaction.emoji;
+
+        const nomeEmoji =
+            emoji.name || emoji.toString();
+
+        const idEmoji = emoji.id
+            ? ` [${emoji.id}]`
+            : '';
+
+        const canal = message.channel
+            ? `${message.channel}`
+            : 'Canal desconhecido';
+
+        // ==============================
+        // EMBED
+        // ==============================
+
+        const embed = new EmbedBuilder()
+            .setColor('#8A00C4')
+            .setAuthor({
+                name: `${user.username} (${user.id})`,
+                iconURL: user.displayAvatarURL()
+            })
+            .setDescription(
+`
+**Channel:** ${canal}
+
+**Emoji:** ${nomeEmoji}${idEmoji}
+
+**Message:** [Jump to Message](${message.url})
+`
+            )
+            .setFooter({
+                text: `🔴 Reaction Removed • ${canal} • ${horarioBrasil()}`
+            });
+
+        // ==============================
+        // EMOJI NO CANTO SUPERIOR DIREITO
+        // ==============================
+
+        if (emoji.id && emoji.url) {
+
+            embed.setThumbnail(emoji.url);
+
+        }
+
+        // ==============================
+        // ENVIAR LOG
+        // ==============================
+
+        await enviarLog(
+            message.guild,
+            [embed]
+        );
+
+    } catch (error) {
+
+        console.error(
+            'Erro ao registrar reação removida:',
             error
         );
 
